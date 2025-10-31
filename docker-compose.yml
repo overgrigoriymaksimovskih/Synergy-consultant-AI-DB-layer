@@ -1,0 +1,45 @@
+version: '3.9'
+
+volumes:
+  weaviate-data:
+    driver: local
+
+services:
+  weaviate:
+    container_name: weaviate-db
+    hostname: weaviate-host
+    image: semitechnologies/weaviate:1.24.0  # Фиксированная версия вместо latest
+    volumes:
+      - weaviate-data:/var/lib/weaviate
+    ports:
+      - ${WEAVIATE_PORT_MAPPING}
+    environment:
+      ENABLE_MODULES: ${WEAVIATE_ENABLE_MODULES}
+      TRANSFORMERS_INFERENCE_API: ${WEAVIATE_TRANSFORMERS_INFERENCE_API}
+      DEFAULT_VECTORIZER_MODULE: ${WEAVIATE_DEFAULT_VECTORIZER_MODULE}
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED}
+    healthcheck:
+      test: ["CMD-SHELL", "${HEALTHCHECK_WEAVIATE_CMD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    depends_on:
+      - t2v-transformers
+
+  t2v-transformers:
+    container_name: t2v-transformers
+    hostname: t2v-transformers-host
+    image: semitechnologies/transformers-inference:custom-1.13.2
+    ports:
+      - ${T2V_PORT_MAPPING}
+    environment:
+      MODEL_NAME: ${T2V_MODEL_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "${HEALTHCHECK_T2V_CMD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
