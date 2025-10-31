@@ -8,38 +8,51 @@ services:
   weaviate:
     container_name: weaviate-db
     hostname: weaviate-host
-    image: semitechnologies/weaviate:1.24.0
+    image: cr.weaviate.io/semitechnologies/weaviate:1.33.3  # Обновлено по docs (было semitechnologies/weaviate:1.24.0)
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - '8080'
+      - --scheme
+      - http
     volumes:
       - weaviate-data:/var/lib/weaviate
     ports:
-      - ${WEAVIATE_PORT_MAPPING}
+      - ${WEAVIATE_PORT_MAPPING}  # Например, "8080:8080"
+      - ${WEAVIATE_GRPC_PORT_MAPPING}  # Например, "50051:50051" (добавлено по docs)
     environment:
-      ENABLE_MODULES: ${WEAVIATE_ENABLE_MODULES}
-      TRANSFORMERS_INFERENCE_API: ${WEAVIATE_TRANSFORMERS_INFERENCE_API}
-      DEFAULT_VECTORIZER_MODULE: ${WEAVIATE_DEFAULT_VECTORIZER_MODULE}
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED}
+      QUERY_DEFAULTS_LIMIT: ${QUERY_DEFAULTS_LIMIT:-25}  # По умолчанию 25 из docs
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-true}
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'  # Обязательно по docs
+      DEFAULT_VECTORIZER_MODULE: ${WEAVIATE_DEFAULT_VECTORIZER_MODULE:-text2vec-transformers}
+      ENABLE_MODULES: ${WEAVIATE_ENABLE_MODULES:-text2vec-transformers}
+      TRANSFORMERS_INFERENCE_API: ${WEAVIATE_TRANSFORMERS_INFERENCE_API:-http://t2v-transformers:8080}  # Hostname из твоего compose
+      CLUSTER_HOSTNAME: 'node1'  # По docs для стабильности
     healthcheck:
-      test: ["CMD-SHELL", "${HEALTHCHECK_WEAVIATE_CMD}"]
+      test: ["CMD-SHELL", "${HEALTHCHECK_WEAVIATE_CMD}"]  # Твоя переменная (например, curl -f http://localhost:8080/v1/meta)
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 60s
     restart: unless-stopped
     depends_on:
-      - t2v-transformers
+      t2v-transformers:
+        condition: service_healthy  # Добавлено для надёжности (Weaviate ждёт здорового t2v)
 
   t2v-transformers:
     container_name: t2v-transformers
     hostname: t2v-transformers-host
-    image: semitechnologies/transformers-inference:custom-1.13.2
+    image: cr.weaviate.io/semitechnologies/transformers-inference:latest  # Generic по docs (для любой модели через env)
     ports:
-      - ${T2V_PORT_MAPPING}
+      - ${T2V_PORT_MAPPING}  # Например, "8081:8080" (чтобы не конфликтовать с Weaviate)
     environment:
-      MODEL_NAME: ${T2V_MODEL_NAME}
+      TRANSFORMERS_MODEL_NAME: ${T2V_MODEL_NAME:-sentence-transformers/multi-qa-MiniLM-L6-cos-v1}  # По docs (было MODEL_NAME; пример модели из docs)
+      ENABLE_CUDA: ${ENABLE_CUDA:-0}  # 0 для CPU, 1 для GPU (по docs)
     healthcheck:
-      test: ["CMD-SHELL", "${HEALTHCHECK_T2V_CMD}"]
+      test: ["CMD-SHELL", "${HEALTHCHECK_T2V_CMD}"]  # Твоя переменная (например, curl -f http://localhost:8080/.well-known/ready)
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 30s
-    restart: unless-stopped
+    restart: unless-stopped  # Твоё
