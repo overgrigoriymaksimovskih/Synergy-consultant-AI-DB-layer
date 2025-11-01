@@ -43,16 +43,15 @@ services:
   t2v-transformers:
     container_name: t2v-transformers
     hostname: t2v-transformers-host
-    image: cr.weaviate.io/semitechnologies/transformers-inference:latest  # Generic по docs (для любой модели через env)
+    image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
     ports:
       - ${T2V_PORT_MAPPING}  # Например, "8081:8080" (чтобы не конфликтовать с Weaviate)
     environment:
-      TRANSFORMERS_MODEL_NAME: ${T2V_MODEL_NAME:-sentence-transformers/multi-qa-MiniLM-L6-cos-v1}  # По docs (было MODEL_NAME; пример модели из docs)
-      ENABLE_CUDA: ${ENABLE_CUDA:-0}  # 0 для CPU, 1 для GPU (по docs)
+      ENABLE_CUDA: ${ENABLE_CUDA:-0}  # TRANSFORMERS_MODEL_NAME убрал — не нужен для этого
     healthcheck:
       test: ["CMD-SHELL", "${HEALTHCHECK_T2V_CMD}"]  # Твоя переменная (например, curl -f http://localhost:8080/.well-known/ready)
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     restart: unless-stopped  # Твоё
