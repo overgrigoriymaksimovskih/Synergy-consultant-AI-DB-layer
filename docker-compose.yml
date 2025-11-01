@@ -1,5 +1,3 @@
-version: '3.9'
-
 volumes:
   weaviate-data:
     driver: local
@@ -8,7 +6,7 @@ services:
   weaviate:
     container_name: weaviate-db
     hostname: weaviate-host
-    image: cr.weaviate.io/semitechnologies/weaviate:1.33.3  # Обновлено по docs (было semitechnologies/weaviate:1.24.0)
+    image: cr.weaviate.io/semitechnologies/weaviate:1.33.3
     command:
       - --host
       - 0.0.0.0
@@ -19,37 +17,37 @@ services:
     volumes:
       - weaviate-data:/var/lib/weaviate
     ports:
-      - ${WEAVIATE_PORT_MAPPING}  # Например, "8080:8080"
-      - ${WEAVIATE_GRPC_PORT_MAPPING}  # Например, "50051:50051" (добавлено по docs)
+      - ${WEAVIATE_PORT_MAPPING}
+      - ${WEAVIATE_GRPC_PORT_MAPPING}
     environment:
-      QUERY_DEFAULTS_LIMIT: ${QUERY_DEFAULTS_LIMIT:-25}  # По умолчанию 25 из docs
+      QUERY_DEFAULTS_LIMIT: ${QUERY_DEFAULTS_LIMIT:-25}
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-true}
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'  # Обязательно по docs
       DEFAULT_VECTORIZER_MODULE: ${WEAVIATE_DEFAULT_VECTORIZER_MODULE:-text2vec-transformers}
       ENABLE_MODULES: ${WEAVIATE_ENABLE_MODULES:-text2vec-transformers}
-      TRANSFORMERS_INFERENCE_API: ${WEAVIATE_TRANSFORMERS_INFERENCE_API:-http://t2v-transformers:8080}  # Hostname из твоего compose
+      TRANSFORMERS_INFERENCE_API: ${WEAVIATE_TRANSFORMERS_INFERENCE_API:-http://t2v-transformers:8080}
       CLUSTER_HOSTNAME: 'node1'  # По docs для стабильности
     healthcheck:
-      test: ["CMD-SHELL", "${HEALTHCHECK_WEAVIATE_CMD}"]  # Твоя переменная (например, curl -f http://localhost:8080/v1/meta)
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/v1/meta || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
     restart: unless-stopped
     depends_on:
       t2v-transformers:
-        condition: service_healthy  # Добавлено для надёжности (Weaviate ждёт здорового t2v)
+        condition: service_healthy
 
   t2v-transformers:
     container_name: t2v-transformers
     hostname: t2v-transformers-host
     image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
     ports:
-      - ${T2V_PORT_MAPPING}  # Например, "8081:8080" (чтобы не конфликтовать с Weaviate)
+      - ${T2V_PORT_MAPPING}
     environment:
-      ENABLE_CUDA: ${ENABLE_CUDA:-0}  # TRANSFORMERS_MODEL_NAME убрал — не нужен для этого
+      ENABLE_CUDA: ${ENABLE_CUDA:-0}
     healthcheck:
-      test: ["CMD-SHELL", "${HEALTHCHECK_T2V_CMD}"]  # Твоя переменная (например, curl -f http://localhost:8080/.well-known/ready)
+      test: ["CMD", "python3", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8080/.well-known/ready')"]
       interval: 10s
       timeout: 5s
       retries: 3
