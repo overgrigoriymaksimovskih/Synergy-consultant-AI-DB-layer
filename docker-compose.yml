@@ -80,21 +80,21 @@ services:
   classification-service:
     container_name: classification-service
     hostname: classification-host
-    image: python:3.11-slim
+    build: ./classification  # Указывает Docker собирать образ из папки ./classification (с Dockerfile и requirements.txt)
     working_dir: /app
     volumes:
-      - ./classification:/app  # Локальная папка с кодом (в ./classification/)
+      - ./classification:/app  # Локальная папка с кодом
     ports:
       - ${CLASSIFICATION_PORT_MAPPING}
     environment:
       - PYTHONUNBUFFERED=1
-    command: [ "python", "app.py" ]  # Запуск Flask/FastAPI приложения
+    command: [ "python", "app.py" ]
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]  # Простая проверка
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     restart: unless-stopped
     depends_on:
-      - weaviate
+      - weaviate-db
