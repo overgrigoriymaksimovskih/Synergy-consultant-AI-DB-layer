@@ -8,7 +8,7 @@ services:
   postgres-db:
     container_name: postgres-db
     hostname: postgres
-    image: postgres:14.5
+    image: postgres:17.6
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
@@ -74,27 +74,4 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
-    restart: unless-stopped  # Твоё
-
-  # Сервис для классификации эмоций и топиков
-  classification-service:
-    container_name: classification-service
-    hostname: classification-host
-    build: ./classification  # Указывает Docker собирать образ из папки ./classification (с Dockerfile и requirements.txt)
-    working_dir: /app
-    volumes:
-      - ./classification:/app  # Локальная папка с кодом
-    ports:
-      - ${CLASSIFICATION_PORT_MAPPING}
-    environment:
-      - PYTHONUNBUFFERED=1
-    command: [ "python", "app.py" ]
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
     restart: unless-stopped
-    depends_on:
-      - weaviate-db
